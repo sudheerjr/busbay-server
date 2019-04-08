@@ -66,6 +66,7 @@ exports.reformatReadings = functions.database
               const distance = directionsResponse.data.rows[0].elements[0].distance.text;
               const fromLocation = placesResponse.data.results[0].address_components[1].short_name;
               const locationDetails = { distance, fromLocation};
+              // TODO: Change branch names
               return admin
                 .database()
                 .ref(`guio/`)
