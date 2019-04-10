@@ -69,7 +69,7 @@ exports.reformatReadingsMorning = functions.database
                 .child(userId)
                 .set(locationDetails).then(() =>{ 
                   const newBusLocation = {
-                    lat, lng, locationName: toLocation
+                    lat, lng, locationName: fromLocation
                   }
                   return admin.database().ref(`bus_location/`).set(newBusLocation);
                 }).catch(err => {
