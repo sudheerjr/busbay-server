@@ -67,7 +67,14 @@ exports.reformatReadingsMorning = functions.database
                 .ref(`bus_attendance_morning/`)
                 .child(reformattedDate)
                 .child(userId)
-                .set(locationDetails)
+                .set(locationDetails).then(() =>{ 
+                  const newBusLocation = {
+                    lat, lng, locationName: toLocation
+                  }
+                  return admin.database().ref(`bus_location/`).set(newBusLocation);
+                }).catch(err => {
+                  return console.log(err)
+                })
             })
           )
           .catch(function(error) {
@@ -121,17 +128,24 @@ exports.reformatReadingsMorning = functions.database
           .then(
             axios.spread((placesResponse, directionsResponse )=> {
               const distance = directionsResponse.data.rows[0].elements[0].distance.text;
-              const fromLocation = placesResponse.data.results[0].address_components[1].short_name;
+              const toLocation = placesResponse.data.results[0].address_components[1].short_name;
               const distanceValue = parseFloat(distance.split(" ")[0])
               const charge = distanceValue * RATE_PER_KM;
-              const locationDetails = { distance, fromLocation, lat, lng, charge, time, username};
+              const locationDetails = { distance, toLocation, lat, lng, charge, time, username};
               // TODO: Change branch names
               return admin
                 .database()
                 .ref(`bus_attendance_evening/`)
                 .child(reformattedDate)
                 .child(userId)
-                .set(locationDetails)
+                .set(locationDetails).then(() =>{ 
+                  const newBusLocation = {
+                    lat, lng, locationName: toLocation
+                  }
+                  return admin.database().ref(`bus_location/`).set(newBusLocation);
+                }).catch(err => {
+                  return console.log(err)
+                })
             })
           )
           .catch(function(error) {
@@ -146,24 +160,22 @@ exports.reformatReadingsMorning = functions.database
     const {lat, lng, fromLocation, charge, time, distance} = snapshot.val();
 
     const reformattedLocationDetails = {
-      morning: {
+      
         lat, lng, fromLocation, charge,time,distance
-      }
+      
     }
-    return admin.database().ref(`/user_expenses`).child(userId).child("travelLog").child(context.params.date).set(reformattedLocationDetails)
+    return admin.database().ref(`/user_expenses`).child(userId).child(context.params.date).child("morning").set(reformattedLocationDetails)
   })
 
   exports.addExpensesEvening = functions.database.ref('/bus_attendance_evening/{date}/{userId}')
   .onCreate((snapshot, context) => {
     const userId = context.params.userId;
-    const {lat, lng, fromLocation, charge, time, distance} = snapshot.val();
+    const {lat, lng, toLocation, charge, time, distance} = snapshot.val();
 
     const reformattedLocationDetails = {
-      evening: {
-        lat, lng, fromLocation, charge,time,distance
-      }
+        lat, lng, toLocation, charge,time,distance
     }
-    return admin.database().ref(`/user_expenses`).child(userId).child("travelLog").child(context.params.date).set(reformattedLocationDetails)
+    return admin.database().ref(`/user_expenses`).child(userId).child(context.params.date).child("evening").set(reformattedLocationDetails)
   })
 
 
@@ -171,13 +183,13 @@ exports.reformatReadingsMorning = functions.database
 
 
   //TODO: Not working
-  exports.deductFees = functions.database.ref('user_expenses/{userId}/travelLog/{date}/').onCreate((snapshot, context) => {
+  exports.deductFees = functions.database.ref('user_expenses/{userId}/{date}/{timeOfDay}').onCreate((snapshot, context) => {
     const {charge} = snapshot.val()
     const userId = context.params.userId
-    return admin.database().ref(`/user_expenses/${userId}/feeDetails/balance`).once(snapshot=> {
+    return admin.database().ref(`/fee_details/${userId}/balance`).once("value", snapshot=> {
       let balance = snapshot.val();
       balance = balance - charge;
-      return admin.database().ref(`/user_expenses/${userId}/feeDetails/balance`).set(balance)
+      return admin.database().ref(`/fee_details/${userId}/balance`).set(balance)
     })
   })
   exports.getAttendanceList = functions.https.onRequest((req, res) => {
